@@ -32,13 +32,8 @@ final class PlayerNode: SKSpriteNode {
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    private(set) var lastVelocity: CGVector = .zero
-    var previousPosition: CGPoint = .zero
-
     func move(in dir: CGVector, speed s: CGFloat) {
-        previousPosition = position
-        lastVelocity     = dir * s
-        physicsBody?.velocity = lastVelocity
+        physicsBody?.velocity = dir.normalized * s
         updateTexture(for: dir)
     }
     func stop() { physicsBody?.velocity = .zero }
