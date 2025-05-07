@@ -3,6 +3,8 @@
 //  LibraryMazeRPG
 //
 //  Created by Kevin Buss & Terrence Gainer on 5/3/25.
+//  Includes AI-assisted code using ChatGPT then customized to fit the game
+
 
 
 import SwiftUI

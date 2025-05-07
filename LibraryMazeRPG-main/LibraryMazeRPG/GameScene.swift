@@ -3,7 +3,7 @@
 //  LibraryMazeRPG
 //
 //  Created by Kevin Buss & Terrence Gainer on 5/3/25.
-//
+//  Includes AI-assisted code using ChatGPT then customized to fit the game
 
 
 
@@ -140,6 +140,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func generateMaze(cols: Int, rows: Int) -> [[Character]] {
         var maze: [[Character]] = Array(repeating: Array(repeating: "#", count: cols), count: rows)
 
+        for y in 1..<rows-1 {
+            for x in 1..<cols-1 {
+                maze[y][x] = "#"
+            }
+        }
+
         func inBounds(x: Int, y: Int) -> Bool {
             x >= 0 && x < cols && y >= 0 && y < rows
         }
@@ -156,8 +162,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
 
-        let startX = cols % 2 == 0 ? 1 : 0
-        let startY = rows % 2 == 0 ? 1 : 0
+        let startX = cols % 2 == 0 ? 1 : 1
+        let startY = rows % 2 == 0 ? 1 : 1
         carve(x: startX, y: startY)
         playerStart = CGPoint(x: CGFloat(startX)*tile - CGFloat(cols/2)*tile,
                               y: CGFloat(-startY)*tile + CGFloat(rows/2)*tile)
@@ -297,86 +303,50 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func maybeDropBook(from shelf: BookshelfNode) {
         let now = CACurrentMediaTime()
         guard now >= shelf.nextDrop else { return }
-
-        let viableTargetExists = openTiles.contains { point in
-            guard frame.contains(point) else { return false }
-            if point == shelf.position { return false }
-
-            let nodesAtPoint = nodes(at: point)
-            let isBlocked = nodesAtPoint.contains { $0 is BookshelfNode || $0 is BookNode }
-            return !isBlocked
-        }
-
-        guard viableTargetExists else { return }
-
         guard CGFloat.random(in: 0...1) < fallChance else { return }
+
         shelf.nextDrop = now + dropCooldown
 
-        shelf.run(SKAction.sequence([
-            .moveBy(x: 5, y: 0, duration: 0.05),
-            .moveBy(x: -10, y: 0, duration: 0.05),
-            .moveBy(x: 10, y: 0, duration: 0.05),
-            .moveBy(x: -5, y: 0, duration: 0.05)
+        shelf.run(.sequence([
+            .moveBy(x: 6,  y: 0, duration: 0.05),
+            .moveBy(x: -12,y: 0, duration: 0.05),
+            .moveBy(x: 12, y: 0, duration: 0.05),
+            .moveBy(x: -6, y: 0, duration: 0.05)
         ]))
 
         run(.wait(forDuration: 1)) { [weak self] in
-            guard let self = self else { return }
-            self.dropBookTowardPlayer(from: shelf)
+            guard let self else { return }
+            let dir = self.cardinalTowardPlayer(from: shelf)
+            self.spawnBook(from: shelf, heading: dir)
         }
     }
 
+    private func cardinalTowardPlayer(from shelf: SKNode) -> CGVector {
+        let dx = player.position.x - shelf.position.x
+        let dy = player.position.y - shelf.position.y
 
-    private func dropBookTowardPlayer(from shelf: BookshelfNode) {
-        guard let player = player else { return }
-
-        let searchRadius: CGFloat = tile * 3.0
-        let maxAttempts = 5
-
-        let nearbyOpenTiles = openTiles
-            .filter { point in
-                guard point.distance(to: player.position) <= searchRadius else { return false }
-                guard frame.contains(point) else { return false }
-                let nodesAtPoint = nodes(at: point)
-                let blocked = nodesAtPoint.contains { $0 is BookshelfNode || $0 is BookNode }
-                return !blocked
-            }
-            .sorted { $0.distance(to: player.position) < $1.distance(to: player.position) }
-
-        var target: CGPoint? = nearbyOpenTiles.prefix(maxAttempts).first
-
-        if target == nil {
-            target = openTiles
-                .filter { point in
-                    guard frame.contains(point) else { return false }
-                    let nodesAtPoint = nodes(at: point)
-                    return !nodesAtPoint.contains { $0 is BookshelfNode || $0 is BookNode }
-                }
-                .min(by: { $0.distance(to: shelf.position) < $1.distance(to: shelf.position) })
+        if abs(dx) >= abs(dy) {
+            return dx > 0 ? CGVector(dx: 1,  dy: 0)
+                          : CGVector(dx: -1, dy: 0)
+        } else {
+            return dy > 0 ? CGVector(dx: 0,  dy: 1)
+                          : CGVector(dx: 0,  dy: -1)
         }
+    }
 
-        guard let finalTarget = target else { return }
-
+    private func spawnBook(from shelf: BookshelfNode, heading dir: CGVector) {
         let book = BookNode(size: CGSize(width: tile * 0.5, height: tile * 0.7))
         book.position = shelf.position
         addChild(book)
 
-        let dx = finalTarget.x - shelf.position.x
-        let dy = finalTarget.y - shelf.position.y
-        let length = sqrt(dx * dx + dy * dy)
-        guard length > 0.1 else { return }
-
-        let direction = CGVector(dx: dx / length, dy: dy / length)
-        let impulse = CGVector(dx: direction.dx * 6.0, dy: direction.dy * 6.0)
-        book.physicsBody?.applyImpulse(impulse)
+        let impulseStrength: CGFloat = 6
+        book.physicsBody?.applyImpulse(CGVector(dx: dir.dx * impulseStrength,
+                                                dy: dir.dy * impulseStrength))
 
         book.run(.repeatForever(.rotate(byAngle: .pi, duration: 0.5)))
         book.scheduleRemoval()
         run(.playSoundFileNamed("bookFall.wav", waitForCompletion: false))
     }
-
-
-
-
 
     private func levelUp() {
         run(.playSoundFileNamed("levelUp.wav", waitForCompletion: false))

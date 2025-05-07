@@ -3,6 +3,8 @@
 //  LibraryMazeRPG
 //
 //  Created by Kevin Buss & Terrence Gainer on 5/3/25.
+//  Includes AI-assisted code using ChatGPT then customized to fit the game
+
 
 import SpriteKit
 
@@ -30,8 +32,13 @@ final class PlayerNode: SKSpriteNode {
     }
     required init?(coder: NSCoder) { fatalError() }
 
+    private(set) var lastVelocity: CGVector = .zero
+    var previousPosition: CGPoint = .zero
+
     func move(in dir: CGVector, speed s: CGFloat) {
-        physicsBody?.velocity = dir.normalized * s
+        previousPosition = position
+        lastVelocity     = dir * s
+        physicsBody?.velocity = lastVelocity
         updateTexture(for: dir)
     }
     func stop() { physicsBody?.velocity = .zero }
