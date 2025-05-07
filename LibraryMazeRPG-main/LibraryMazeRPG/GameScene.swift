@@ -304,49 +304,45 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let now = CACurrentMediaTime()
         guard now >= shelf.nextDrop else { return }
         guard CGFloat.random(in: 0...1) < fallChance else { return }
-
         shelf.nextDrop = now + dropCooldown
 
         shelf.run(.sequence([
-            .moveBy(x: 6,  y: 0, duration: 0.05),
-            .moveBy(x: -12,y: 0, duration: 0.05),
-            .moveBy(x: 12, y: 0, duration: 0.05),
-            .moveBy(x: -6, y: 0, duration: 0.05)
+            .moveBy(x: 4,  y: 0, duration: 0.05),
+            .moveBy(x: -8, y: 0, duration: 0.05),
+            .moveBy(x: 8,  y: 0, duration: 0.05),
+            .moveBy(x: -4, y: 0, duration: 0.05)
         ]))
 
         run(.wait(forDuration: 1)) { [weak self] in
             guard let self else { return }
-            let dir = self.cardinalTowardPlayer(from: shelf)
-            self.spawnBook(from: shelf, heading: dir)
+            self.dropBook(from: shelf)
         }
     }
 
-    private func cardinalTowardPlayer(from shelf: SKNode) -> CGVector {
+    private func dropBook(from shelf: BookshelfNode) {
         let dx = player.position.x - shelf.position.x
         let dy = player.position.y - shelf.position.y
 
+        var offset = CGPoint.zero
         if abs(dx) >= abs(dy) {
-            return dx > 0 ? CGVector(dx: 1,  dy: 0)
-                          : CGVector(dx: -1, dy: 0)
+            offset.x = dx > 0 ?  tile/2 + 2 : -tile/2 - 2
         } else {
-            return dy > 0 ? CGVector(dx: 0,  dy: 1)
-                          : CGVector(dx: 0,  dy: -1)
+            offset.y = dy > 0 ?  tile/2 + 2 : -tile/2 - 2
         }
-    }
 
-    private func spawnBook(from shelf: BookshelfNode, heading dir: CGVector) {
-        let book = BookNode(size: CGSize(width: tile * 0.5, height: tile * 0.7))
-        book.position = shelf.position
+        let book = BookNode(size: CGSize(width: tile*0.5, height: tile*0.7))
+        book.position = shelf.position + offset
         addChild(book)
 
-        let impulseStrength: CGFloat = 6
-        book.physicsBody?.applyImpulse(CGVector(dx: dir.dx * impulseStrength,
-                                                dy: dir.dy * impulseStrength))
-
         book.run(.repeatForever(.rotate(byAngle: .pi, duration: 0.5)))
+
+        let shove = CGVector(dx: .random(in: -20...20), dy: .random(in: 5...25))
+        book.physicsBody?.applyImpulse(shove)
+
         book.scheduleRemoval()
         run(.playSoundFileNamed("bookFall.wav", waitForCompletion: false))
     }
+
 
     private func levelUp() {
         run(.playSoundFileNamed("levelUp.wav", waitForCompletion: false))
